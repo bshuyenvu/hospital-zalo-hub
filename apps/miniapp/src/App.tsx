@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getAccessToken } from "zmp-sdk";
 import DirectoryView from "./DirectoryView";
+import AnnouncementsView from "./AnnouncementsView";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -26,7 +27,7 @@ type InternalUser = {
 };
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"home" | "directory">("home");
+  const [activeView, setActiveView] = useState<"home" | "directory" | "announcements">("home");
   const [user, setUser] = useState<InternalUser | null>(null);
   const [internalToken, setInternalToken] = useState<string | null>(null);
   const [status, setStatus] = useState(
@@ -94,6 +95,16 @@ export default function App() {
     );
   }
 
+  if (activeView === "announcements" && internalToken && user) {
+    return (
+      <AnnouncementsView
+        token={internalToken}
+        role={user.role}
+        onBack={() => setActiveView("home")}
+      />
+    );
+  }
+
   return (
     <main className="app">
       <header className="top">
@@ -155,6 +166,11 @@ export default function App() {
                   return;
                 }
 
+                if (tool.label === "Thông báo") {
+                  setActiveView("announcements");
+                  return;
+                }
+
                 setStatus(`${tool.label} đang được triển khai theo lộ trình.`);
               }}
             >
@@ -170,7 +186,7 @@ export default function App() {
 
       <nav className="nav" aria-label="Điều hướng chính">
         <button type="button">🏠<span>Trang chủ</span></button>
-        <button type="button" disabled={!isAuthenticated}>🔔<span>Thông báo</span></button>
+        <button type="button" disabled={!isAuthenticated} onClick={() => setActiveView("announcements")}>🔔<span>Thông báo</span></button>
         <button type="button" disabled={!isAuthenticated}>👤<span>Cá nhân</span></button>
       </nav>
     </main>
