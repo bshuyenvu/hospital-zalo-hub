@@ -10,6 +10,7 @@ import { registerUserRoutes } from "./routes/users.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
+import { registerAnnouncementRoutes } from "./routes/announcements.js";
 
 const app = Fastify({
   logger: {
@@ -89,7 +90,7 @@ app.get("/", async (_request, reply) => {
 app.get("/health", async () => ({
   ok: true,
   service: "hospital-zalo-hub-api",
-  version: "0.3.1",
+  version: "0.4.0",
   timestamp: new Date().toISOString()
 }));
 
@@ -105,6 +106,7 @@ app.get("/v1", async () => ({
     "users",
     "departments",
     "directory",
+    "announcements",
     "rbac",
     "dashboard",
     "audit"
@@ -114,6 +116,7 @@ app.get("/v1", async () => ({
 await registerAuthRoutes(app);
 await registerDepartmentRoutes(app);
 await registerUserRoutes(app);
+await registerAnnouncementRoutes(app);
 await registerDashboardRoutes(app);
 await registerAuditRoutes(app);
 await registerIntegrationRoutes(app);
