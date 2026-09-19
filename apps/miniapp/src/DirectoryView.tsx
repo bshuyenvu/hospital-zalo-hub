@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { openPhone } from "zmp-sdk";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
