@@ -10,7 +10,8 @@ import {
   createState,
   exchangeAuthorizationCode,
   getZaloProfile,
-  hashTicket
+  hashTicket,
+  isZaloOAuthConfigured
 } from "../lib/zalo.js";
 
 const OAUTH_TTL_MS = 10 * 60 * 1000;
@@ -46,6 +47,11 @@ function authRedirect(params: Record<string, string>) {
 }
 
 export async function registerAuthRoutes(app: FastifyInstance) {
+  app.get("/v1/auth/capabilities", async () => ({
+    zaloLoginEnabled: isZaloOAuthConfigured(),
+    devLoginEnabled: process.env.ALLOW_DEV_AUTH === "true"
+  }));
+
   app.post("/v1/auth/dev-login", async (request, reply) => {
     if (process.env.ALLOW_DEV_AUTH !== "true") {
       return reply.code(403).send({
@@ -142,6 +148,14 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   );
 
   app.get("/v1/auth/zalo/start", async (request, reply) => {
+    if (!isZaloOAuthConfigured()) {
+      return reply.code(503).send({
+        error: "zalo_not_configured",
+        message:
+          "Đăng nhập Zalo chưa được cấu hình. Quản trị viên cần thiết lập ZALO_APP_ID và ZALO_APP_SECRET trước."
+      });
+    }
+
     const query = z
       .object({
         mode: z.enum(["login", "link"]).default("login")
