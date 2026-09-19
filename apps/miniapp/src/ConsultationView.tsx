@@ -39,10 +39,11 @@ type ConsultationDetail = ConsultationListItem & {
 type Props = {
   token: string;
   role: string;
+  userId: string;
   onBack: () => void;
 };
 
-export default function ConsultationView({ token, role, onBack }: Props) {
+export default function ConsultationView({ token, role, userId, onBack }: Props) {
   const [items, setItems] = useState<ConsultationListItem[]>([]);
   const [directory, setDirectory] = useState<Person[]>([]);
   const [selected, setSelected] = useState<ConsultationDetail | null>(null);
@@ -276,7 +277,7 @@ export default function ConsultationView({ token, role, onBack }: Props) {
         ) : null}
 
         <div className="consultation-actions">
-          {(selected.owner.id || canAdmin) ? (
+          {(selected.owner.id === userId || canAdmin) ? (
             <button
               type="button"
               className="secondary-action"
