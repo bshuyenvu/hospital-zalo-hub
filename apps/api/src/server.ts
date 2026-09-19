@@ -73,16 +73,18 @@ app.setErrorHandler((error, request, reply) => {
 app.get("/health", async () => ({
   ok: true,
   service: "hospital-zalo-hub-api",
-  version: "0.2.0",
+  version: "0.3.0",
   timestamp: new Date().toISOString()
 }));
 
 app.get("/v1", async () => ({
   name: "Hospital Zalo Hub API",
   sprint: 1,
-  version: "0.2.0",
+  version: "0.3.0",
   modules: [
     "auth",
+    "zalo-oauth",
+    "zalo-miniapp-auth",
     "users",
     "departments",
     "directory",
