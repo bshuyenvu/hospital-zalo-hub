@@ -112,7 +112,7 @@ export default function App() {
     <main className="app">
       <header className="top">
         <div>
-          <span className="badge">Hospital Hub</span>
+          <span className="badge">Huyền Vũ Hub</span>
           <h1>{user ? `Xin chào, ${user.fullName}` : "Xin chào 👋"}</h1>
           <p>
             {user?.department?.name ?? "Cổng tiện ích nội bộ trên Zalo"}
