@@ -38,6 +38,11 @@ enum ConsultationStatus {
   CLOSED
 }
 
+enum InternalFileScope {
+  ALL
+  DEPARTMENT
+}
+
 model Department {
   id        String   @id @default(cuid())
   code      String   @unique
@@ -46,6 +51,7 @@ model Department {
   users         User[]
   announcements Announcement[] @relation("AnnouncementTargetDepartment")
   consultations ConsultationCase[]
+  files         InternalFile[]
   createdAt     DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -75,6 +81,7 @@ model User {
   consultationsOwned    ConsultationCase[]   @relation("ConsultationOwner")
   consultationMemberships ConsultationParticipant[]
   consultationMessages  ConsultationMessage[]
+  uploadedFiles          InternalFile[]          @relation("InternalFileUploader")
 
   @@index([departmentId])
   @@index([fullName])
@@ -198,4 +205,24 @@ model ConsultationMessage {
 
   @@index([consultationId, createdAt])
   @@index([authorId, createdAt])
+}
+
+
+model InternalFile {
+  id           String            @id @default(cuid())
+  originalName String
+  storedName   String            @unique
+  mimeType     String
+  sizeBytes    Int
+  scope        InternalFileScope @default(DEPARTMENT)
+  uploaderId   String
+  uploader     User              @relation("InternalFileUploader", fields: [uploaderId], references: [id], onDelete: Restrict)
+  departmentId String?
+  department   Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@index([scope, departmentId, createdAt])
+  @@index([uploaderId, createdAt])
 }

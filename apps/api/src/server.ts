@@ -2,6 +2,7 @@ import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import { Prisma } from "@prisma/client";
 import { ZodError } from "zod";
 import { registerAuthRoutes } from "./routes/auth.js";
@@ -12,6 +13,7 @@ import { registerAuditRoutes } from "./routes/audit.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerAnnouncementRoutes } from "./routes/announcements.js";
 import { registerConsultationRoutes } from "./routes/consultations.js";
+import { registerFileRoutes } from "./routes/files.js";
 
 const app = Fastify({
   logger: {
@@ -39,6 +41,13 @@ await app.register(cors, {
 
 await app.register(jwt, {
   secret: sessionSecret
+});
+
+await app.register(multipart, {
+  limits: {
+    files: 1,
+    fileSize: 20 * 1024 * 1024
+  }
 });
 
 app.setErrorHandler((error, request, reply) => {
@@ -109,6 +118,7 @@ app.get("/v1", async () => ({
     "directory",
     "announcements",
     "consultations",
+    "files",
     "rbac",
     "dashboard",
     "audit"
@@ -120,6 +130,7 @@ await registerDepartmentRoutes(app);
 await registerUserRoutes(app);
 await registerAnnouncementRoutes(app);
 await registerConsultationRoutes(app);
+await registerFileRoutes(app);
 await registerDashboardRoutes(app);
 await registerAuditRoutes(app);
 await registerIntegrationRoutes(app);
