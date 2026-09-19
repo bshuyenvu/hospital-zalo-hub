@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { getAccessToken } from "zmp-sdk";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
@@ -26,39 +26,13 @@ type InternalUser = {
 
 export default function App() {
   const [user, setUser] = useState<InternalUser | null>(null);
+  const [internalToken, setInternalToken] = useState<string | null>(null);
   const [status, setStatus] = useState(
     "Xác thực Zalo để truy cập các tiện ích nội bộ."
   );
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    const internalToken = window.localStorage.getItem("hospital_hub_token");
-
-    if (!internalToken) return;
-
-    fetch(`${API_URL}/v1/auth/session`, {
-      headers: {
-        Authorization: `Bearer ${internalToken}`
-      }
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Phiên nội bộ đã hết hạn.");
-        return response.json();
-      })
-      .then((data) => {
-        setUser({
-          id: data.user.sub,
-          employeeCode: data.user.employeeCode,
-          fullName: data.user.fullName,
-          role: data.user.role,
-          department: data.user.department
-        });
-        setStatus("Đã xác thực với hệ thống nội bộ.");
-      })
-      .catch(() => {
-        window.localStorage.removeItem("hospital_hub_token");
-      });
-  }, []);
+  const isAuthenticated = Boolean(user && internalToken);
 
   async function loginWithZalo() {
     setBusy(true);
@@ -88,7 +62,7 @@ export default function App() {
         );
       }
 
-      window.localStorage.setItem("hospital_hub_token", data.token);
+      setInternalToken(data.token);
       setUser(data.user);
       setStatus("Đã xác thực Zalo và phiên nội bộ đã được tạo.");
     } catch (error) {
@@ -103,7 +77,7 @@ export default function App() {
   }
 
   function logout() {
-    window.localStorage.removeItem("hospital_hub_token");
+    setInternalToken(null);
     setUser(null);
     setStatus("Đã đăng xuất khỏi phiên nội bộ.");
   }
@@ -130,14 +104,14 @@ export default function App() {
         </div>
       </header>
 
-      <section className={user ? "notice success" : "notice"}>
-        <span>{user ? "✅" : "🔐"}</span>
+      <section className={isAuthenticated ? "notice success" : "notice"}>
+        <span>{isAuthenticated ? "✅" : "🔐"}</span>
         <div>
           <strong>
-            {user ? "Đã xác thực nhân sự" : "Đăng nhập bằng Zalo"}
+            {isAuthenticated ? "Đã xác thực nhân sự" : "Đăng nhập bằng Zalo"}
           </strong>
           <p>{status}</p>
-          {user ? (
+          {isAuthenticated ? (
             <button className="auth-button secondary" type="button" onClick={logout}>
               Đăng xuất
             </button>
@@ -162,12 +136,12 @@ export default function App() {
               className="tool"
               key={tool.label}
               type="button"
-              disabled={!user}
+              disabled={!isAuthenticated}
             >
               <span className="icon">{tool.icon}</span>
               <span>
                 <strong>{tool.label}</strong>
-                <small>{user ? tool.note : "Cần đăng nhập trước"}</small>
+                <small>{isAuthenticated ? tool.note : "Cần đăng nhập trước"}</small>
               </span>
             </button>
           ))}
