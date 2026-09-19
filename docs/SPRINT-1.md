@@ -17,11 +17,14 @@ Có một hệ thống nội bộ chạy được, xác định đúng người 
 - [x] CRUD nhân sự
 - [x] CRUD khoa/phòng
 - [x] RBAC middleware
-- [ ] Zalo OAuth thật
+- [x] Zalo OAuth V4 + PKCE
 - [x] Session/JWT nội bộ
 - [x] Dashboard dữ liệu thật
 - [x] Danh bạ có tìm kiếm
-- [x] Audit log cho thao tác quản trị
+- [x] Audit log
+- [x] Mini App → Zalo token → backend → JWT nội bộ
+- [ ] Cấu hình App ID/App Secret thật trên môi trường triển khai
+- [ ] Khởi tạo Mini App bằng Mini App ID thật và kiểm thử Device Mode
 
 ## Bảo mật hiện tại
 
@@ -30,16 +33,15 @@ Có một hệ thống nội bộ chạy được, xác định đúng người 
 - Xóa nghiệp vụ dùng soft-disable để giữ dấu vết.
 - Audit ghi actor, hành động, entity, IP và user-agent.
 - Dev login phải được tắt ở production bằng `ALLOW_DEV_AUTH=false`.
-- Zalo App Secret/OA Secret chỉ cấu hình qua environment variables.
+- App Secret chỉ tồn tại phía server.
+- OAuth dùng PKCE + state.
+- Callback dùng one-time ticket 2 phút, không đưa JWT vào URL.
+- Zalo account chỉ được link sau khi người dùng đã có phiên nội bộ hợp lệ.
 
 ## Definition of done
 
 1. CI xanh.
-2. `docker compose up -d postgres` chạy PostgreSQL.
-3. `npm run db:push` tạo schema.
-4. `npm run db:seed` tạo danh mục mẫu và ADMIN001.
-5. Admin chạy ở port 3000.
-6. API chạy ở port 4000 và `GET /health` trả `ok: true`.
-7. Mini App chạy ở port 5173.
-8. CRUD/RBAC/dashboard/audit build thành công.
-9. Checkpoint còn lại của Sprint 1: Zalo OAuth thật.
+2. PostgreSQL + schema + seed chạy được.
+3. Web Admin/API/Mini App build thành công.
+4. OAuth flow build và typecheck thành công.
+5. Dependency audit không còn lỗi high/critical có thể sửa bằng upgrade hợp lý.

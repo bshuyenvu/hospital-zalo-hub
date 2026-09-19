@@ -77,3 +77,13 @@ export async function devLogin(employeeCode = "ADMIN001") {
   window.localStorage.setItem("hospital_hub_token", data.token);
   return data;
 }
+
+export async function startZaloAuth(mode: "login" | "link") {
+  const data = await apiFetch<{ authorizationUrl: string }>(
+    `/v1/auth/zalo/start?mode=${mode}`,
+    {},
+    mode === "login" ? null : undefined
+  );
+
+  window.location.assign(data.authorizationUrl);
+}

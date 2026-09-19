@@ -5,19 +5,19 @@ Cổng nội bộ bệnh viện tích hợp Zalo OA + Zalo Mini App + Web Admin 
 ## MVP hiện tại
 
 - JWT + RBAC 7 vai trò
-- Quản lý nhân sự
-- Quản lý khoa/phòng
+- Quản lý nhân sự và khoa/phòng
 - Danh bạ nội bộ có tìm kiếm
-- Dashboard quản trị dữ liệu thật
-- Audit log
-- Skeleton Zalo Mini App
-- Callback Zalo OAuth đã có điểm nối, chờ cấu hình App/OA thật
+- Dashboard + Audit log
+- Zalo Social OAuth V4 với PKCE/state
+- Liên kết Zalo ↔ hồ sơ nhân sự nội bộ
+- One-time auth ticket, không đưa JWT vào callback URL
+- Zalo Mini App dùng `getAccessToken()` rồi xác minh ở backend
 
 ## Kiến trúc
 
 - `apps/admin`: Next.js Web Admin
 - `apps/api`: Fastify REST API
-- `apps/miniapp`: React + Vite, khung Zalo Mini App
+- `apps/miniapp`: React + Vite + Zalo Mini App SDK
 - `packages/db`: Prisma + PostgreSQL
 - `docs`: tài liệu kiến trúc và sprint
 
@@ -44,9 +44,37 @@ Cổng nội bộ bệnh viện tích hợp Zalo OA + Zalo Mini App + Web Admin 
    npm run dev:admin
    npm run dev:miniapp
    ```
-6. Vào Web Admin ở port **3000** và chọn **Đăng nhập ADMIN001**.
 
-Tài khoản phát triển chỉ hoạt động khi `ALLOW_DEV_AUTH=true`. Khi deploy production phải đặt `ALLOW_DEV_AUTH=false` và dùng secret đủ mạnh.
+## Cấu hình Zalo Social OAuth V4
+
+Trong Zalo for Developers, cấu hình Callback URL trùng chính xác với `ZALO_REDIRECT_URI`.
+
+Biến môi trường bắt buộc:
+
+```env
+ZALO_APP_ID=
+ZALO_APP_SECRET=
+ZALO_REDIRECT_URI=https://api.example.vn/v1/auth/zalo/callback
+ZALO_AUTH_SUCCESS_REDIRECT=https://hub.example.vn/auth/zalo/callback
+```
+
+Luồng an toàn:
+
+1. Nhân sự đăng nhập nội bộ trước.
+2. Chọn **Liên kết Zalo**.
+3. Backend tạo PKCE verifier/challenge + state.
+4. Zalo callback về API.
+5. Backend xác minh profile Zalo và ghi `zaloUserId` vào đúng nhân sự.
+6. Callback chỉ mang one-time ticket về Web Admin.
+7. Web Admin đổi ticket lấy JWT nội bộ.
+
+Sau khi đã liên kết, người dùng có thể đăng nhập bằng Zalo trực tiếp.
+
+## Zalo Mini App
+
+Project hiện có SDK `zmp-sdk`. Với Mini App ID thật, chạy `zmp init` trong `apps/miniapp`, sau đó kiểm thử bằng Device Mode.
+
+Mini App gọi `getAccessToken()`, nhưng app secret và các API server-to-server tuyệt đối không đặt trong client.
 
 ## Nguyên tắc dữ liệu
 

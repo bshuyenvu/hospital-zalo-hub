@@ -200,6 +200,13 @@ h2 { margin: 6px 0 0; font-size: 26px; }
   gap: 24px;
 }
 
+.login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .button {
   border: 0;
   border-radius: 11px;
@@ -424,6 +431,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .activity-list p, .activity-list small { margin: 0; }
 .activity-list small { display: block; color: var(--muted); margin-top: 3px; }
 
+.auth-callback {
+  padding-top: 72px;
+}
+
 @media (max-width: 900px) {
   .admin-header { position: static; flex-wrap: wrap; }
   .admin-nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
@@ -441,4 +452,6 @@ tbody tr:last-child td { border-bottom: 0; }
   .page-heading { align-items: start; }
   .search-form, .search-form.large { min-width: 0; width: 100%; }
   .search-form.large input { min-width: 0; }
+  .login-actions { justify-content: stretch; }
+  .login-actions .button { width: 100%; }
 }

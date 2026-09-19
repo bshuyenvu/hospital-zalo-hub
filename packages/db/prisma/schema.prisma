@@ -17,6 +17,11 @@ enum UserRole {
   VIEWER
 }
 
+enum ZaloOAuthMode {
+  LOGIN
+  LINK
+}
+
 model Department {
   id        String   @id @default(cuid())
   code      String   @unique
@@ -28,23 +33,55 @@ model Department {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  employeeCode String      @unique
-  fullName     String
-  email        String?     @unique
-  phone        String?
-  zaloUserId   String?     @unique
-  role         UserRole    @default(STAFF)
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id])
-  isActive     Boolean     @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  auditLogs    AuditLog[]  @relation("AuditActor")
+  id              String          @id @default(cuid())
+  employeeCode    String          @unique
+  fullName        String
+  email           String?         @unique
+  phone           String?
+  zaloUserId      String?         @unique
+  zaloDisplayName String?
+  zaloAvatarUrl   String?
+  role            UserRole        @default(STAFF)
+  departmentId    String?
+  department      Department?     @relation(fields: [departmentId], references: [id])
+  isActive        Boolean         @default(true)
+  lastLoginAt     DateTime?
+  lastZaloLoginAt DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  auditLogs       AuditLog[]      @relation("AuditActor")
+  zaloFlows       ZaloOAuthFlow[]
+  authTickets     AuthTicket[]
 
   @@index([departmentId])
   @@index([fullName])
+}
+
+model ZaloOAuthFlow {
+  id           String        @id @default(cuid())
+  state        String        @unique
+  codeVerifier String
+  mode         ZaloOAuthMode
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime      @default(now())
+
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+model AuthTicket {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@index([userId])
 }
 
 model AuditLog {
