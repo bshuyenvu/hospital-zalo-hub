@@ -1,4 +1,5 @@
 import type { FastifyRequest } from "fastify";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./db.js";
 import type { SessionUser } from "./auth.js";
 
@@ -6,8 +7,13 @@ type AuditInput = {
   action: string;
   entityType?: string;
   entityId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: unknown;
 };
+
+function toJsonValue(value: unknown): Prisma.InputJsonValue | undefined {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
 
 export async function writeAudit(
   request: FastifyRequest,
@@ -23,7 +29,7 @@ export async function writeAudit(
       entityId: input.entityId,
       ipAddress: request.ip,
       userAgent: request.headers["user-agent"] ?? undefined,
-      metadata: input.metadata
+      metadata: toJsonValue(input.metadata)
     }
   });
 }
