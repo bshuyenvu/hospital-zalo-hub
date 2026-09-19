@@ -24,7 +24,6 @@ type IntegrationStatus = {
     refreshExpiresAt: string | null;
     connectedAt: string | null;
     redirectUri: string | null;
-    codeChallenge: string | null;
     webhookSecretConfigured: boolean;
   };
   miniApp: {
@@ -37,6 +36,13 @@ type IntegrationStatus = {
     sessionSecretSafe: boolean;
   };
   overallReady: boolean;
+};
+
+type OAAuthorizationRequest = {
+  authorizationUrl: string;
+  redirectUri: string;
+  codeChallenge: string;
+  expiresInSeconds: number;
 };
 
 function Mark({ ok }: { ok: boolean }) {
@@ -59,6 +65,7 @@ export default function ZaloIntegrationPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [oaRequest, setOARequest] = useState<OAAuthorizationRequest | null>(null);
 
   async function load() {
     if (!getToken()) {
@@ -86,6 +93,7 @@ export default function ZaloIntegrationPage() {
     const oa = params.get("oa");
     if (oa === "connected") {
       setNotice("Đã kết nối Zalo Official Account thành công.");
+      setOARequest(null);
       window.history.replaceState({}, "", window.location.pathname);
     } else if (oa === "error") {
       setError(
@@ -97,22 +105,31 @@ export default function ZaloIntegrationPage() {
     void load();
   }, []);
 
-  async function connectOA() {
+  async function prepareOA() {
     setBusy(true);
     setError("");
     setNotice("");
 
     try {
-      const result = await apiFetch<{ authorizationUrl: string }>(
+      const result = await apiFetch<OAAuthorizationRequest>(
         "/v1/integrations/zalo/oa/start"
       );
-      window.location.assign(result.authorizationUrl);
+      setOARequest(result);
+      setNotice(
+        "Đã tạo PKCE mới. Hãy cập nhật Callback URL + Code Challenge trong Zalo Developers trước khi cấp quyền."
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Không khởi tạo được OA OAuth."
       );
+    } finally {
       setBusy(false);
     }
+  }
+
+  function authorizeOA() {
+    if (!oaRequest) return;
+    window.location.assign(oaRequest.authorizationUrl);
   }
 
   async function refreshOA() {
@@ -291,8 +308,6 @@ export default function ZaloIntegrationPage() {
             <div className="config-note">
               <strong>OA Callback URL</strong>
               <code>{data.officialAccount.redirectUri ?? "Chưa cấu hình"}</code>
-              <strong>Code Challenge</strong>
-              <code>{data.officialAccount.codeChallenge ?? "Chưa cấu hình"}</code>
               <strong>OA ID</strong>
               <code>{data.officialAccount.oaId ?? "Chưa kết nối"}</code>
               <strong>Access token hết hạn</strong>
@@ -300,6 +315,35 @@ export default function ZaloIntegrationPage() {
               <strong>Refresh token hết hạn</strong>
               <code>{dateText(data.officialAccount.refreshExpiresAt)}</code>
             </div>
+
+            {oaRequest && !data.officialAccount.connected && (
+              <>
+                <div className="config-note">
+                  <strong>Callback URL cho phiên</strong>
+                  <code>{oaRequest.redirectUri}</code>
+                  <strong>Code Challenge mới</strong>
+                  <code>{oaRequest.codeChallenge}</code>
+                  <strong>Hiệu lực</strong>
+                  <code>{oaRequest.expiresInSeconds} giây</code>
+                </div>
+                <div className="toolbar">
+                  <div>
+                    <strong>Bước xác nhận OA</strong>
+                    <p className="muted">
+                      Cập nhật Callback URL và Code Challenge trên Zalo Developers,
+                      chọn các nhóm quyền OA cần dùng và lưu cấu hình trước khi tiếp tục.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="button primary"
+                    onClick={authorizeOA}
+                  >
+                    Đã lưu cấu hình → Cấp quyền OA
+                  </button>
+                </div>
+              </>
+            )}
           </section>
 
           <section className="data-panel config-panel">

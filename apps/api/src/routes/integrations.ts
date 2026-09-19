@@ -34,20 +34,13 @@ function sessionSecretIsProductionSafe() {
   return secret !== "replace_with_a_long_random_secret" && secret.length >= 32;
 }
 
-function oaCodeVerifier() {
-  const value = process.env.ZALO_OA_CODE_VERIFIER?.trim() ?? "";
-  if (value.length < 43 || value.length > 128) {
-    throw new Error(
-      "ZALO_OA_CODE_VERIFIER must contain between 43 and 128 characters."
-    );
-  }
-  return value;
-}
-
-function oaCodeChallenge() {
-  return createHash("sha256")
-    .update(oaCodeVerifier())
+function createOAPKCE() {
+  const codeVerifier = randomBytes(32).toString("base64url");
+  const codeChallenge = createHash("sha256")
+    .update(codeVerifier, "ascii")
     .digest("base64url");
+
+  return { codeVerifier, codeChallenge };
 }
 
 function oaRedirectUri() {
@@ -297,8 +290,7 @@ export async function registerIntegrationRoutes(app: FastifyInstance) {
       const oaOAuthConfigured =
         isConfigured(process.env.ZALO_APP_ID) &&
         isConfigured(process.env.ZALO_APP_SECRET) &&
-        isConfigured(process.env.ZALO_OA_REDIRECT_URI) &&
-        isConfigured(process.env.ZALO_OA_CODE_VERIFIER);
+        isConfigured(process.env.ZALO_OA_REDIRECT_URI);
 
       const connection = await prisma.zaloOAConnection.findUnique({
         where: { id: PRIMARY_OA_CONNECTION_ID },
@@ -338,7 +330,6 @@ export async function registerIntegrationRoutes(app: FastifyInstance) {
           refreshExpiresAt: connection?.refreshExpiresAt ?? null,
           connectedAt: connection?.connectedAt ?? null,
           redirectUri: process.env.ZALO_OA_REDIRECT_URI ?? null,
-          codeChallenge: oaOAuthConfigured ? oaCodeChallenge() : null,
           webhookSecretConfigured: isConfigured(
             process.env.ZALO_OA_WEBHOOK_SECRET
           )
@@ -376,6 +367,7 @@ export async function registerIntegrationRoutes(app: FastifyInstance) {
 
       try {
         const state = randomBytes(24).toString("base64url");
+        const { codeVerifier, codeChallenge } = createOAPKCE();
         const session = request.user as SessionUser;
 
         await prisma.zaloOAOAuthFlow.deleteMany({
@@ -386,18 +378,22 @@ export async function registerIntegrationRoutes(app: FastifyInstance) {
           data: {
             state,
             userId: session.sub,
+            codeVerifierEncrypted: seal(codeVerifier),
             expiresAt: new Date(Date.now() + 10 * 60 * 1000)
           }
         });
 
+        const redirectUri = oaRedirectUri();
         const url = new URL(OA_PERMISSION_URL);
         url.searchParams.set("app_id", appId);
-        url.searchParams.set("redirect_uri", oaRedirectUri());
-        url.searchParams.set("code_challenge", oaCodeChallenge());
+        url.searchParams.set("redirect_uri", redirectUri);
+        url.searchParams.set("code_challenge", codeChallenge);
         url.searchParams.set("state", state);
 
         return {
           authorizationUrl: url.toString(),
+          redirectUri,
+          codeChallenge,
           expiresInSeconds: 600
         };
       } catch (error) {
@@ -405,7 +401,7 @@ export async function registerIntegrationRoutes(app: FastifyInstance) {
         return reply.code(503).send({
           error: "oa_oauth_not_configured",
           message:
-            "Cấu hình OA OAuth chưa hoàn chỉnh. Kiểm tra callback và PKCE verifier."
+            "Cấu hình OA OAuth chưa hoàn chỉnh. Kiểm tra App ID, App Secret và callback."
         });
       }
     }
@@ -466,7 +462,7 @@ export async function registerIntegrationRoutes(app: FastifyInstance) {
           app_id: appId,
           code: query.code,
           grant_type: "authorization_code",
-          code_verifier: oaCodeVerifier()
+          code_verifier: open(flow.codeVerifierEncrypted)
         });
 
         const token = await requestOAToken(params);
