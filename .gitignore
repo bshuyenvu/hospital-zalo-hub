@@ -4,6 +4,8 @@ dist
 coverage
 .env
 .env.local
+.env.production
+.env.prod
 .env.*.local
 .DS_Store
 *.log
