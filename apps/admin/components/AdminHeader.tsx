@@ -32,6 +32,7 @@ export default function AdminHeader() {
         <a href="/departments">Khoa/phòng</a>
         <a href="/directory">Danh bạ</a>
         <a href="/audit">Audit</a>
+        <a href="/integrations/zalo">Zalo</a>
       </nav>
 
       {loggedIn ? (
