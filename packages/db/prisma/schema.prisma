@@ -226,3 +226,28 @@ model InternalFile {
   @@index([scope, departmentId, createdAt])
   @@index([uploaderId, createdAt])
 }
+
+
+model ZaloOAOAuthFlow {
+  id        String   @id @default(cuid())
+  state     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@index([userId])
+}
+
+model ZaloOAConnection {
+  id                    String   @id
+  oaId                  String   @unique
+  oaName                String?
+  accessTokenEncrypted  String
+  refreshTokenEncrypted String
+  accessExpiresAt       DateTime?
+  refreshExpiresAt      DateTime?
+  connectedById         String?
+  connectedAt           DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
