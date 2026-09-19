@@ -3,6 +3,7 @@ import { getAccessToken } from "zmp-sdk";
 import DirectoryView from "./DirectoryView";
 import AnnouncementsView from "./AnnouncementsView";
 import ConsultationView from "./ConsultationView";
+import FilesView from "./FilesView";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -28,7 +29,7 @@ type InternalUser = {
 };
 
 export default function App() {
-  const [activeView, setActiveView] = useState<"home" | "directory" | "announcements" | "consultations">("home");
+  const [activeView, setActiveView] = useState<"home" | "directory" | "announcements" | "consultations" | "files">("home");
   const [user, setUser] = useState<InternalUser | null>(null);
   const [internalToken, setInternalToken] = useState<string | null>(null);
   const [status, setStatus] = useState(
@@ -117,6 +118,17 @@ export default function App() {
     );
   }
 
+  if (activeView === "files" && internalToken && user) {
+    return (
+      <FilesView
+        token={internalToken}
+        role={user.role}
+        userId={user.id}
+        onBack={() => setActiveView("home")}
+      />
+    );
+  }
+
   return (
     <main className="app">
       <header className="top">
@@ -185,6 +197,11 @@ export default function App() {
 
                 if (tool.label === "Hội chẩn") {
                   setActiveView("consultations");
+                  return;
+                }
+
+                if (tool.label === "Tệp nội bộ") {
+                  setActiveView("files");
                   return;
                 }
 
