@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AdminHeader from "../components/AdminHeader";
-import { apiFetch, devLogin, getToken } from "../lib/api";
+import {
+  apiFetch,
+  devLogin,
+  getToken,
+  startZaloAuth
+} from "../lib/api";
 
 type DashboardData = {
   activeUsers: number;
@@ -20,9 +25,22 @@ type DashboardData = {
   }>;
 };
 
+type SessionData = {
+  user: {
+    sub: string;
+    employeeCode: string;
+    fullName: string;
+    role: string;
+    zaloLinked: boolean;
+    zaloDisplayName: string | null;
+  };
+};
+
 export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [zaloLinked, setZaloLinked] = useState(false);
+  const [zaloName, setZaloName] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -33,9 +51,15 @@ export default function Home() {
 
   async function loadDashboard() {
     try {
-      const data = await apiFetch<DashboardData>("/v1/dashboard");
-      setDashboard(data);
+      const [dashboardData, sessionData] = await Promise.all([
+        apiFetch<DashboardData>("/v1/dashboard"),
+        apiFetch<SessionData>("/v1/auth/session")
+      ]);
+
+      setDashboard(dashboardData);
       setLoggedIn(true);
+      setZaloLinked(sessionData.user.zaloLinked);
+      setZaloName(sessionData.user.zaloDisplayName);
       setError("");
     } catch (err) {
       setDashboard(null);
@@ -48,6 +72,7 @@ export default function Home() {
   useEffect(() => {
     const hasToken = Boolean(getToken());
     setLoggedIn(hasToken);
+
     if (hasToken) {
       void loadDashboard();
     }
@@ -55,9 +80,9 @@ export default function Home() {
 
   async function loginDemo() {
     setBusy(true);
+
     try {
       await devLogin();
-      setLoggedIn(true);
       await loadDashboard();
     } catch (err) {
       setError(
@@ -66,6 +91,19 @@ export default function Home() {
           : "Không đăng nhập được tài khoản thử nghiệm."
       );
     } finally {
+      setBusy(false);
+    }
+  }
+
+  async function beginZalo(mode: "login" | "link") {
+    setBusy(true);
+
+    try {
+      await startZaloAuth(mode);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Không khởi tạo được đăng nhập Zalo."
+      );
       setBusy(false);
     }
   }
@@ -99,11 +137,11 @@ export default function Home() {
 
       <section className="hero">
         <div>
-          <p className="eyebrow">HOSPITAL ZALO HUB · MVP 0.2</p>
+          <p className="eyebrow">HOSPITAL ZALO HUB · MVP 0.3</p>
           <h1>Cổng nội bộ bệnh viện</h1>
           <p className="subtitle">
             Quản trị nhân sự, khoa/phòng, phân quyền và danh bạ trên một nền tảng
-            dùng chung; sẵn sàng làm backend cho Zalo Mini App.
+            dùng chung; Zalo Social OAuth V4 đã được đưa vào luồng xác thực.
           </p>
         </div>
         <div className={loggedIn ? "status" : "status pending"}>
@@ -112,23 +150,56 @@ export default function Home() {
         </div>
       </section>
 
-      {!loggedIn && (
+      {!loggedIn ? (
         <section className="login-panel">
           <div>
-            <p className="eyebrow">CHẾ ĐỘ PHÁT TRIỂN</p>
-            <h2>Đăng nhập thử nghiệm</h2>
+            <p className="eyebrow">ĐĂNG NHẬP</p>
+            <h2>Zalo hoặc tài khoản phát triển</h2>
             <p className="muted">
-              Sau khi chạy database và seed, dùng ADMIN001 để kiểm thử toàn bộ
-              luồng quản trị. Production phải đặt ALLOW_DEV_AUTH=false.
+              Đăng nhập Zalo chỉ hoạt động với tài khoản đã liên kết trước với
+              hồ sơ nhân sự nội bộ.
+            </p>
+          </div>
+          <div className="login-actions">
+            <button
+              className="button primary"
+              type="button"
+              disabled={busy}
+              onClick={() => void beginZalo("login")}
+            >
+              Đăng nhập bằng Zalo
+            </button>
+            <button
+              className="button ghost"
+              type="button"
+              disabled={busy}
+              onClick={() => void loginDemo()}
+            >
+              {busy ? "Đang xử lý..." : "Dev login ADMIN001"}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="login-panel">
+          <div>
+            <p className="eyebrow">LIÊN KẾT ZALO</p>
+            <h2>
+              {zaloLinked
+                ? `Đã liên kết${zaloName ? ` · ${zaloName}` : ""}`
+                : "Chưa liên kết tài khoản Zalo"}
+            </h2>
+            <p className="muted">
+              Việc liên kết yêu cầu phiên nội bộ hợp lệ, tránh ghép tài khoản
+              chỉ dựa trên tên hiển thị.
             </p>
           </div>
           <button
             className="button primary"
             type="button"
             disabled={busy}
-            onClick={() => void loginDemo()}
+            onClick={() => void beginZalo("link")}
           >
-            {busy ? "Đang đăng nhập..." : "Đăng nhập ADMIN001"}
+            {zaloLinked ? "Liên kết lại Zalo" : "Liên kết Zalo"}
           </button>
         </section>
       )}
@@ -170,17 +241,16 @@ export default function Home() {
 
       <section className="panel">
         <div>
-          <p className="eyebrow">SPRINT 1 · PHẦN 2</p>
-          <h2>Nền tảng quản trị đã nối API thật</h2>
+          <p className="eyebrow">SPRINT 1 · PHẦN 3</p>
+          <h2>Zalo authentication</h2>
         </div>
         <ol>
-          <li><span>01</span>Seed khoa/phòng và tài khoản ADMIN001</li>
-          <li><span>02</span>JWT + RBAC cho endpoint quản trị</li>
-          <li><span>03</span>CRUD nhân sự và khoa/phòng</li>
-          <li><span>04</span>Danh bạ có tìm kiếm</li>
-          <li><span>05</span>Dashboard dữ liệu thật</li>
-          <li><span>06</span>Audit log cho thao tác quản trị</li>
-          <li><span>07</span>Zalo OAuth là checkpoint tiếp theo</li>
+          <li><span>01</span>OAuth V4 + PKCE + state chống CSRF</li>
+          <li><span>02</span>Liên kết Zalo với nhân sự đã xác thực</li>
+          <li><span>03</span>One-time ticket thay vì JWT trên callback URL</li>
+          <li><span>04</span>Đăng nhập Zalo cho tài khoản đã liên kết</li>
+          <li><span>05</span>Endpoint riêng cho Zalo Mini App</li>
+          <li><span>06</span>Audit mọi thao tác link/login/unlink</li>
         </ol>
       </section>
 
