@@ -455,3 +455,66 @@ tbody tr:last-child td { border-bottom: 0; }
   .login-actions { justify-content: stretch; }
   .login-actions .button { width: 100%; }
 }
+
+
+.integration-grid .card strong {
+  font-size: 22px;
+}
+
+.config-panel {
+  margin-top: 18px;
+}
+
+.config-list {
+  display: grid;
+}
+
+.config-list > div {
+  min-height: 54px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.config-list > div:last-child {
+  border-bottom: 0;
+}
+
+.config-list > div > span:first-child {
+  color: #45566b;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.config-note {
+  padding: 18px 20px;
+  border-top: 1px solid var(--line);
+  background: #f8fafc;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 10px 16px;
+  align-items: center;
+}
+
+.config-note strong {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.config-note code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+@media (max-width: 620px) {
+  .config-note {
+    grid-template-columns: 1fr;
+  }
+}
