@@ -229,11 +229,12 @@ model InternalFile {
 
 
 model ZaloOAOAuthFlow {
-  id        String   @id @default(cuid())
-  state     String   @unique
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id                    String   @id @default(cuid())
+  state                 String   @unique
+  userId                String
+  codeVerifierEncrypted String
+  expiresAt             DateTime
+  createdAt             DateTime @default(now())
 
   @@index([expiresAt])
   @@index([userId])
