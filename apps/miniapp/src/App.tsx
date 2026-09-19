@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getAccessToken } from "zmp-sdk";
+import DirectoryView from "./DirectoryView";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -25,6 +26,7 @@ type InternalUser = {
 };
 
 export default function App() {
+  const [activeView, setActiveView] = useState<"home" | "directory">("home");
   const [user, setUser] = useState<InternalUser | null>(null);
   const [internalToken, setInternalToken] = useState<string | null>(null);
   const [status, setStatus] = useState(
@@ -77,9 +79,19 @@ export default function App() {
   }
 
   function logout() {
+    setActiveView("home");
     setInternalToken(null);
     setUser(null);
     setStatus("Đã đăng xuất khỏi phiên nội bộ.");
+  }
+
+  if (activeView === "directory" && internalToken) {
+    return (
+      <DirectoryView
+        token={internalToken}
+        onBack={() => setActiveView("home")}
+      />
+    );
   }
 
   return (
@@ -137,6 +149,14 @@ export default function App() {
               key={tool.label}
               type="button"
               disabled={!isAuthenticated}
+              onClick={() => {
+                if (tool.label === "Danh bạ") {
+                  setActiveView("directory");
+                  return;
+                }
+
+                setStatus(`${tool.label} đang được triển khai theo lộ trình.`);
+              }}
             >
               <span className="icon">{tool.icon}</span>
               <span>
