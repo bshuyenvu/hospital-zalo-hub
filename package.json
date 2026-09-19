@@ -14,7 +14,8 @@
     "typecheck": "npm run typecheck -w @hospital/db && npm run typecheck -w @hospital/api && npm run typecheck -w @hospital/admin && npm run typecheck -w @hospital/miniapp",
     "db:generate": "npm run prisma:generate -w @hospital/db",
     "db:push": "npm run prisma:push -w @hospital/db",
-    "db:migrate": "npm run prisma:migrate -w @hospital/db"
+    "db:migrate": "npm run prisma:migrate -w @hospital/db",
+    "db:seed": "npm run prisma:seed -w @hospital/db"
   },
   "engines": {
     "node": ">=22"

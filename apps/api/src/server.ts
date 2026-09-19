@@ -1,7 +1,14 @@
 import "dotenv/config";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
-import { z } from "zod";
+import jwt from "@fastify/jwt";
+import { Prisma } from "@prisma/client";
+import { ZodError } from "zod";
+import { registerAuthRoutes } from "./routes/auth.js";
+import { registerDepartmentRoutes } from "./routes/departments.js";
+import { registerUserRoutes } from "./routes/users.js";
+import { registerDashboardRoutes } from "./routes/dashboard.js";
+import { registerAuditRoutes } from "./routes/audit.js";
 
 const app = Fastify({
   logger: {
@@ -13,44 +20,83 @@ const app = Fastify({
   }
 });
 
+const sessionSecret =
+  process.env.SESSION_SECRET ??
+  (process.env.NODE_ENV === "production" ? "" : "dev-only-change-me");
+
+if (!sessionSecret) {
+  throw new Error("SESSION_SECRET is required in production.");
+}
+
 await app.register(cors, {
-  origin: process.env.CORS_ORIGIN?.split(",").map((value) => value.trim()) ?? true,
-  credentials: true,
+  origin:
+    process.env.CORS_ORIGIN?.split(",").map((value) => value.trim()) ?? true,
+  credentials: true
+});
+
+await app.register(jwt, {
+  secret: sessionSecret
+});
+
+app.setErrorHandler((error, request, reply) => {
+  if (error instanceof ZodError) {
+    return reply.code(400).send({
+      error: "validation_error",
+      message: "Dữ liệu gửi lên không hợp lệ.",
+      issues: error.issues
+    });
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return reply.code(409).send({
+        error: "duplicate_value",
+        message: "Mã nhân sự, mã khoa/phòng hoặc email đã tồn tại."
+      });
+    }
+
+    if (error.code === "P2025") {
+      return reply.code(404).send({
+        error: "not_found",
+        message: "Không tìm thấy dữ liệu cần thao tác."
+      });
+    }
+  }
+
+  request.log.error(error);
+  return reply.code(500).send({
+    error: "internal_error",
+    message: "Có lỗi hệ thống. Vui lòng thử lại hoặc kiểm tra log máy chủ."
+  });
 });
 
 app.get("/health", async () => ({
   ok: true,
   service: "hospital-zalo-hub-api",
-  version: "0.1.0",
-  timestamp: new Date().toISOString(),
+  version: "0.2.0",
+  timestamp: new Date().toISOString()
 }));
 
 app.get("/v1", async () => ({
   name: "Hospital Zalo Hub API",
   sprint: 1,
-  modules: ["auth", "users", "departments", "rbac", "audit"],
+  version: "0.2.0",
+  modules: [
+    "auth",
+    "users",
+    "departments",
+    "directory",
+    "rbac",
+    "dashboard",
+    "audit"
+  ]
 }));
 
-app.get("/v1/auth/zalo/callback", async (request, reply) => {
-  const query = z
-    .object({
-      code: z.string().optional(),
-      state: z.string().optional(),
-    })
-    .parse(request.query);
-
-  if (!query.code) {
-    return reply.code(400).send({
-      error: "missing_authorization_code",
-      message: "Zalo callback placeholder is ready. OAuth token exchange is implemented after credentials are configured.",
-    });
-  }
-
-  return reply.code(501).send({
-    error: "zalo_oauth_not_configured",
-    message: "Authorization code received. Configure ZALO_APP_ID/ZALO_APP_SECRET before enabling token exchange.",
-  });
-});
+await registerAuthRoutes(app);
+await registerDepartmentRoutes(app);
+await registerUserRoutes(app);
+await registerDashboardRoutes(app);
+await registerAuditRoutes(app);
 
 const port = Number(process.env.API_PORT ?? 4000);
 const host = process.env.API_HOST ?? "0.0.0.0";
