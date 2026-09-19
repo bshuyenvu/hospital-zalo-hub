@@ -11,6 +11,7 @@ import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import { registerIntegrationRoutes } from "./routes/integrations.js";
 import { registerAnnouncementRoutes } from "./routes/announcements.js";
+import { registerConsultationRoutes } from "./routes/consultations.js";
 
 const app = Fastify({
   logger: {
@@ -107,6 +108,7 @@ app.get("/v1", async () => ({
     "departments",
     "directory",
     "announcements",
+    "consultations",
     "rbac",
     "dashboard",
     "audit"
@@ -117,6 +119,7 @@ await registerAuthRoutes(app);
 await registerDepartmentRoutes(app);
 await registerUserRoutes(app);
 await registerAnnouncementRoutes(app);
+await registerConsultationRoutes(app);
 await registerDashboardRoutes(app);
 await registerAuditRoutes(app);
 await registerIntegrationRoutes(app);
