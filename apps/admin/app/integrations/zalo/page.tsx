@@ -16,8 +16,16 @@ type IntegrationStatus = {
   };
   officialAccount: {
     ready: boolean;
-    oaIdConfigured: boolean;
-    oaSecretConfigured: boolean;
+    oauthConfigured: boolean;
+    connected: boolean;
+    oaId: string | null;
+    oaName: string | null;
+    accessExpiresAt: string | null;
+    refreshExpiresAt: string | null;
+    connectedAt: string | null;
+    redirectUri: string | null;
+    codeChallenge: string | null;
+    webhookSecretConfigured: boolean;
   };
   miniApp: {
     ready: boolean;
@@ -39,9 +47,18 @@ function Mark({ ok }: { ok: boolean }) {
   );
 }
 
+function dateText(value: string | null) {
+  if (!value) return "Không có";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("vi-VN");
+}
+
 export default function ZaloIntegrationPage() {
   const [data, setData] = useState<IntegrationStatus | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
 
   async function load() {
     if (!getToken()) {
@@ -65,8 +82,82 @@ export default function ZaloIntegrationPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oa = params.get("oa");
+    if (oa === "connected") {
+      setNotice("Đã kết nối Zalo Official Account thành công.");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (oa === "error") {
+      setError(
+        `Kết nối Zalo OA thất bại: ${params.get("reason") ?? "unknown"}`
+      );
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     void load();
   }, []);
+
+  async function connectOA() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      const result = await apiFetch<{ authorizationUrl: string }>(
+        "/v1/integrations/zalo/oa/start"
+      );
+      window.location.assign(result.authorizationUrl);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Không khởi tạo được OA OAuth."
+      );
+      setBusy(false);
+    }
+  }
+
+  async function refreshOA() {
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await apiFetch("/v1/integrations/zalo/oa/refresh", {
+        method: "POST"
+      });
+      setNotice("Đã làm mới OA access token.");
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Không làm mới được OA token."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disconnectOA() {
+    if (!window.confirm("Ngắt kết nối Zalo Official Account khỏi Hospital Hub?")) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
+    setNotice("");
+
+    try {
+      await apiFetch("/v1/integrations/zalo/oa", {
+        method: "DELETE"
+      });
+      setNotice("Đã ngắt kết nối Zalo OA.");
+      await load();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Không ngắt được kết nối OA."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <main className="shell">
@@ -77,8 +168,8 @@ export default function ZaloIntegrationPage() {
           <p className="eyebrow">TÍCH HỢP</p>
           <h1 className="page-title">Zalo</h1>
           <p className="muted">
-            Kiểm tra cấu hình Social OAuth, Official Account, Mini App và các
-            điều kiện production mà không hiển thị khóa bí mật.
+            Social OAuth, Official Account và Mini App được kiểm tra mà không
+            hiển thị App Secret, access token hay refresh token.
           </p>
         </div>
         {data && (
@@ -89,6 +180,7 @@ export default function ZaloIntegrationPage() {
         )}
       </section>
 
+      {notice && <div className="alert">{notice}</div>}
       {error && <div className="alert error">{error}</div>}
 
       {data && (
@@ -141,14 +233,72 @@ export default function ZaloIntegrationPage() {
           <section className="data-panel config-panel">
             <div className="toolbar">
               <div>
-                <p className="eyebrow">OA + MINI APP</p>
-                <h2>Kênh Zalo nội bộ</h2>
+                <p className="eyebrow">OFFICIAL ACCOUNT OAUTH</p>
+                <h2>{data.officialAccount.oaName ?? "Zalo Official Account"}</h2>
+              </div>
+              <div className="login-actions">
+                {data.officialAccount.connected ? (
+                  <>
+                    <button
+                      type="button"
+                      className="button ghost"
+                      disabled={busy}
+                      onClick={() => void refreshOA()}
+                    >
+                      Làm mới token
+                    </button>
+                    <button
+                      type="button"
+                      className="button ghost"
+                      disabled={busy}
+                      onClick={() => void disconnectOA()}
+                    >
+                      Ngắt kết nối
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="button primary"
+                    disabled={busy || !data.officialAccount.oauthConfigured}
+                    onClick={() => void connectOA()}
+                  >
+                    {busy ? "Đang xử lý..." : "Kết nối OA"}
+                  </button>
+                )}
               </div>
             </div>
+
             <div className="config-list">
-              <div><span>ZALO_OA_ID</span><Mark ok={data.officialAccount.oaIdConfigured} /></div>
-              <div><span>ZALO_OA_SECRET</span><Mark ok={data.officialAccount.oaSecretConfigured} /></div>
-              <div><span>ZALO_MINI_APP_ID</span><Mark ok={data.miniApp.miniAppIdConfigured} /></div>
+              <div>
+                <span>OA OAuth/PKCE server</span>
+                <Mark ok={data.officialAccount.oauthConfigured} />
+              </div>
+              <div>
+                <span>OA đã cấp quyền</span>
+                <Mark ok={data.officialAccount.connected} />
+              </div>
+              <div>
+                <span>OA Webhook Secret (tùy chọn)</span>
+                <Mark ok={data.officialAccount.webhookSecretConfigured} />
+              </div>
+              <div>
+                <span>ZALO_MINI_APP_ID</span>
+                <Mark ok={data.miniApp.miniAppIdConfigured} />
+              </div>
+            </div>
+
+            <div className="config-note">
+              <strong>OA Callback URL</strong>
+              <code>{data.officialAccount.redirectUri ?? "Chưa cấu hình"}</code>
+              <strong>Code Challenge</strong>
+              <code>{data.officialAccount.codeChallenge ?? "Chưa cấu hình"}</code>
+              <strong>OA ID</strong>
+              <code>{data.officialAccount.oaId ?? "Chưa kết nối"}</code>
+              <strong>Access token hết hạn</strong>
+              <code>{dateText(data.officialAccount.accessExpiresAt)}</code>
+              <strong>Refresh token hết hạn</strong>
+              <code>{dateText(data.officialAccount.refreshExpiresAt)}</code>
             </div>
           </section>
 
