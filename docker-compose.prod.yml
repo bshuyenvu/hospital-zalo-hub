@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hospital
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: hospital_hub
+    volumes:
+      - hospital_postgres_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hospital -d hospital_hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - hospital_internal
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: 4000
+      DATABASE_URL: postgresql://hospital:${POSTGRES_PASSWORD}@postgres:5432/hospital_hub?schema=public
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      ALLOW_DEV_AUTH: ${ALLOW_DEV_AUTH:-false}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ZALO_APP_ID: ${ZALO_APP_ID:-}
+      ZALO_APP_SECRET: ${ZALO_APP_SECRET:-}
+      ZALO_REDIRECT_URI: ${ZALO_REDIRECT_URI}
+      ZALO_AUTH_SUCCESS_REDIRECT: ${ZALO_AUTH_SUCCESS_REDIRECT}
+      ZALO_MINI_APP_ID: ${ZALO_MINI_APP_ID:-}
+      ZALO_OA_ID: ${ZALO_OA_ID:-}
+      ZALO_OA_SECRET: ${ZALO_OA_SECRET:-}
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:4000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - hospital_internal
+
+  admin:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.admin
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - hospital_internal
+
+volumes:
+  hospital_postgres_prod:
+
+networks:
+  hospital_internal:
+    driver: bridge

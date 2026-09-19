@@ -31,3 +31,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Validate production Docker Compose
+        run: docker compose --env-file .env.production.example -f docker-compose.prod.yml config
