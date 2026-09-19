@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { API_URL } from "../../../lib/api";
+import { API_URL } from "../../../../lib/api";
 
 export default function ZaloCallbackPage() {
   const [message, setMessage] = useState("Đang hoàn tất đăng nhập Zalo...");
