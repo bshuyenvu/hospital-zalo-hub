@@ -1,0 +1,22 @@
+{
+  "name": "hospital-zalo-hub",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:admin": "npm run dev -w @hospital/admin",
+    "dev:api": "npm run dev -w @hospital/api",
+    "dev:miniapp": "npm run dev -w @hospital/miniapp",
+    "build": "npm run build -w @hospital/api && npm run build -w @hospital/admin && npm run build -w @hospital/miniapp",
+    "typecheck": "npm run typecheck -w @hospital/db && npm run typecheck -w @hospital/api && npm run typecheck -w @hospital/admin && npm run typecheck -w @hospital/miniapp",
+    "db:generate": "npm run prisma:generate -w @hospital/db",
+    "db:push": "npm run prisma:push -w @hospital/db",
+    "db:migrate": "npm run prisma:migrate -w @hospital/db"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
