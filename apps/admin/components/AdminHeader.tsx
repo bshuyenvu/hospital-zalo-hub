@@ -1,12 +1,18 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { clearToken, getToken } from "../lib/api";
 
 export default function AdminHeader() {
-  const loggedIn = Boolean(getToken());
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setLoggedIn(Boolean(getToken()));
+  }, []);
 
   function logout() {
     clearToken();
+    setLoggedIn(false);
     window.location.href = "/";
   }
 
