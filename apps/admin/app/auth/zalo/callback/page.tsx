@@ -3,8 +3,24 @@
 import { useEffect, useState } from "react";
 import { API_URL } from "../../../../lib/api";
 
+const errorMessages: Record<string, string> = {
+  missing_code_or_state:
+    "Đây là URL callback kỹ thuật của Zalo và không nên mở trực tiếp. Hãy trở về trang chủ rồi bắt đầu bằng nút Đăng nhập bằng Zalo.",
+  oauth_state_expired:
+    "Phiên đăng nhập Zalo đã hết hạn. Hãy trở về trang chủ và thử lại.",
+  zalo_account_not_linked:
+    "Tài khoản Zalo này chưa được liên kết với hồ sơ nhân sự nội bộ.",
+  zalo_account_already_linked:
+    "Tài khoản Zalo này đã được liên kết với một nhân sự khác.",
+  internal_user_not_found:
+    "Không tìm thấy tài khoản nội bộ đang hoạt động để liên kết Zalo.",
+  zalo_oauth_failed:
+    "Zalo không hoàn tất được quá trình xác thực. Vui lòng thử lại từ trang chủ."
+};
+
 export default function ZaloCallbackPage() {
   const [message, setMessage] = useState("Đang hoàn tất đăng nhập Zalo...");
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -12,12 +28,19 @@ export default function ZaloCallbackPage() {
     const error = params.get("error");
 
     if (error) {
-      setMessage(`Không thể xác thực Zalo: ${error}`);
+      setIsError(true);
+      setMessage(
+        errorMessages[error] ??
+          `Không thể xác thực Zalo: ${error}`
+      );
       return;
     }
 
     if (!ticket) {
-      setMessage("Callback không có ticket hợp lệ.");
+      setIsError(true);
+      setMessage(
+        "Callback không có ticket hợp lệ. Hãy trở về trang chủ và bắt đầu lại luồng đăng nhập."
+      );
       return;
     }
 
@@ -36,6 +59,7 @@ export default function ZaloCallbackPage() {
         window.location.replace("/");
       })
       .catch((err) => {
+        setIsError(true);
         setMessage(
           err instanceof Error ? err.message : "Không hoàn tất được đăng nhập."
         );
@@ -49,7 +73,9 @@ export default function ZaloCallbackPage() {
           <p className="eyebrow">ZALO OAUTH</p>
           <h2>{message}</h2>
           <p className="muted">
-            Ticket xác thực chỉ dùng một lần và hết hạn sau vài phút.
+            {isError
+              ? "Callback chỉ có dữ liệu hợp lệ khi được Zalo chuyển về sau một phiên đăng nhập."
+              : "Ticket xác thực chỉ dùng một lần và hết hạn sau vài phút."}
           </p>
         </div>
         <a className="button ghost" href="/">Về trang chủ</a>

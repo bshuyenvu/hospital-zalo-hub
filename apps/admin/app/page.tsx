@@ -25,6 +25,11 @@ type DashboardData = {
   }>;
 };
 
+type AuthCapabilities = {
+  zaloLoginEnabled: boolean;
+  devLoginEnabled: boolean;
+};
+
 type SessionData = {
   user: {
     sub: string;
@@ -38,6 +43,7 @@ type SessionData = {
 
 export default function Home() {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
+  const [capabilities, setCapabilities] = useState<AuthCapabilities | null>(null);
   const [loggedIn, setLoggedIn] = useState(false);
   const [zaloLinked, setZaloLinked] = useState(false);
   const [zaloName, setZaloName] = useState<string | null>(null);
@@ -70,6 +76,15 @@ export default function Home() {
   }
 
   useEffect(() => {
+    void apiFetch<AuthCapabilities>("/v1/auth/capabilities", {}, null)
+      .then(setCapabilities)
+      .catch(() =>
+        setCapabilities({
+          zaloLoginEnabled: false,
+          devLoginEnabled: false
+        })
+      );
+
     const hasToken = Boolean(getToken());
     setLoggedIn(hasToken);
 
@@ -154,29 +169,38 @@ export default function Home() {
         <section className="login-panel">
           <div>
             <p className="eyebrow">ĐĂNG NHẬP</p>
-            <h2>Zalo hoặc tài khoản phát triển</h2>
+            <h2>Đăng nhập nội bộ</h2>
             <p className="muted">
-              Đăng nhập Zalo chỉ hoạt động với tài khoản đã liên kết trước với
-              hồ sơ nhân sự nội bộ.
+              {capabilities === null
+                ? "Đang kiểm tra phương thức đăng nhập..."
+                : capabilities.zaloLoginEnabled
+                  ? "Đăng nhập Zalo chỉ hoạt động với tài khoản đã liên kết trước với hồ sơ nhân sự nội bộ."
+                  : "Hệ thống đã online nhưng Zalo App chưa được cấu hình. Sau khi nhập App ID và App Secret, nút đăng nhập Zalo sẽ tự động được mở."}
             </p>
           </div>
           <div className="login-actions">
             <button
               className="button primary"
               type="button"
-              disabled={busy}
+              disabled={busy || !capabilities?.zaloLoginEnabled}
               onClick={() => void beginZalo("login")}
             >
-              Đăng nhập bằng Zalo
+              {capabilities === null
+                ? "Đang kiểm tra..."
+                : capabilities.zaloLoginEnabled
+                  ? "Đăng nhập bằng Zalo"
+                  : "Zalo chưa cấu hình"}
             </button>
-            <button
-              className="button ghost"
-              type="button"
-              disabled={busy}
-              onClick={() => void loginDemo()}
-            >
-              {busy ? "Đang xử lý..." : "Dev login ADMIN001"}
-            </button>
+            {capabilities?.devLoginEnabled && (
+              <button
+                className="button ghost"
+                type="button"
+                disabled={busy}
+                onClick={() => void loginDemo()}
+              >
+                {busy ? "Đang xử lý..." : "Dev login ADMIN001"}
+              </button>
+            )}
           </div>
         </section>
       ) : (
@@ -196,10 +220,14 @@ export default function Home() {
           <button
             className="button primary"
             type="button"
-            disabled={busy}
+            disabled={busy || !capabilities?.zaloLoginEnabled}
             onClick={() => void beginZalo("link")}
           >
-            {zaloLinked ? "Liên kết lại Zalo" : "Liên kết Zalo"}
+            {!capabilities?.zaloLoginEnabled
+              ? "Zalo chưa cấu hình"
+              : zaloLinked
+                ? "Liên kết lại Zalo"
+                : "Liên kết Zalo"}
           </button>
         </section>
       )}
