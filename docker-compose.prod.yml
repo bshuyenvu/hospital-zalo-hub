@@ -28,6 +28,7 @@ services:
       DATABASE_URL: postgresql://hospital:${POSTGRES_PASSWORD}@postgres:5432/hospital_hub?schema=public
       CORS_ORIGIN: ${CORS_ORIGIN}
       ALLOW_DEV_AUTH: ${ALLOW_DEV_AUTH:-false}
+      ALLOW_FIRST_ZALO_BOOTSTRAP: ${ALLOW_FIRST_ZALO_BOOTSTRAP:-false}
       SESSION_SECRET: ${SESSION_SECRET}
       ZALO_APP_ID: ${ZALO_APP_ID:-}
       ZALO_APP_SECRET: ${ZALO_APP_SECRET:-}

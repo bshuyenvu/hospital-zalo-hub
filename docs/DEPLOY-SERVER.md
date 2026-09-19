@@ -82,18 +82,23 @@ docker compose --env-file .env.production -f docker-compose.prod.yml exec api np
 
 This creates sample departments and `ADMIN001`.
 
-For the first Zalo linking only, if no other internal authentication exists yet:
+For the first Zalo linking only, keep `ALLOW_DEV_AUTH=false`.
 
-1. Temporarily set `ALLOW_DEV_AUTH=true`.
-2. Restart API:
+Use the guarded first-Zalo bootstrap instead:
+
+1. Confirm the database has exactly 1 active user and 0 users with a linked Zalo account.
+2. Temporarily set `ALLOW_FIRST_ZALO_BOOTSTRAP=true`.
+3. Restart API:
    ```bash
    docker compose --env-file .env.production -f docker-compose.prod.yml up -d api
    ```
-3. Sign in as ADMIN001 and link the intended Zalo account.
-4. Immediately set `ALLOW_DEV_AUTH=false`.
-5. Restart API again.
+4. From the Web Admin home page, choose **Đăng nhập bằng Zalo**.
+5. If and only if the safety conditions still hold, that first Zalo identity is linked to the sole active user.
+6. Immediately set `ALLOW_FIRST_ZALO_BOOTSTRAP=false` and restart API again.
 
-Do not leave development login enabled on an Internet-facing environment.
+The claim update requires `zaloUserId IS NULL`, so a second concurrent login cannot overwrite an already claimed account.
+
+Do not enable development login on an Internet-facing environment.
 
 ## 5. Zalo callback
 

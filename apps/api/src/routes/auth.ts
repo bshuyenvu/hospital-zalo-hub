@@ -250,6 +250,7 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       const profile = await getZaloProfile(tokenData.access_token!);
 
       let user;
+      let bootstrapLinked = false;
 
       if (flow.mode === ZaloOAuthMode.LINK) {
         if (!flow.userId) {
@@ -293,6 +294,47 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           where: { zaloUserId: profile.id }
         });
 
+        if (
+          (!user || !user.isActive) &&
+          process.env.ALLOW_FIRST_ZALO_BOOTSTRAP === "true"
+        ) {
+          const [activeUsers, linkedUsers] = await Promise.all([
+            prisma.user.count({ where: { isActive: true } }),
+            prisma.user.count({ where: { zaloUserId: { not: null } } })
+          ]);
+
+          if (activeUsers === 1 && linkedUsers === 0) {
+            const candidate = await prisma.user.findFirst({
+              where: { isActive: true },
+              select: { id: true }
+            });
+
+            if (candidate) {
+              const claimed = await prisma.user.updateMany({
+                where: {
+                  id: candidate.id,
+                  isActive: true,
+                  zaloUserId: null
+                },
+                data: {
+                  zaloUserId: profile.id,
+                  zaloDisplayName: profile.name,
+                  zaloAvatarUrl: profile.picture?.data?.url ?? null,
+                  lastZaloLoginAt: new Date(),
+                  lastLoginAt: new Date()
+                }
+              });
+
+              if (claimed.count === 1) {
+                user = await prisma.user.findUnique({
+                  where: { id: candidate.id }
+                });
+                bootstrapLinked = true;
+              }
+            }
+          }
+        }
+
         if (!user || !user.isActive) {
           await prisma.zaloOAuthFlow.delete({ where: { id: flow.id } });
           return reply.redirect(
@@ -300,15 +342,17 @@ export async function registerAuthRoutes(app: FastifyInstance) {
           );
         }
 
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            zaloDisplayName: profile.name,
-            zaloAvatarUrl: profile.picture?.data?.url ?? null,
-            lastZaloLoginAt: new Date(),
-            lastLoginAt: new Date()
-          }
-        });
+        if (!bootstrapLinked) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              zaloDisplayName: profile.name,
+              zaloAvatarUrl: profile.picture?.data?.url ?? null,
+              lastZaloLoginAt: new Date(),
+              lastLoginAt: new Date()
+            }
+          });
+        }
       }
 
       const ticket = createOneTimeTicket();
@@ -330,7 +374,9 @@ export async function registerAuthRoutes(app: FastifyInstance) {
             action:
               flow.mode === ZaloOAuthMode.LINK
                 ? "AUTH_ZALO_LINK"
-                : "AUTH_ZALO_LOGIN",
+                : bootstrapLinked
+                  ? "AUTH_ZALO_BOOTSTRAP_LINK"
+                  : "AUTH_ZALO_LOGIN",
             entityType: "User",
             entityId: user.id,
             ipAddress: request.ip,
@@ -346,7 +392,8 @@ export async function registerAuthRoutes(app: FastifyInstance) {
       return reply.redirect(
         authRedirect({
           ticket,
-          linked: flow.mode === ZaloOAuthMode.LINK ? "1" : "0"
+          linked:
+            flow.mode === ZaloOAuthMode.LINK || bootstrapLinked ? "1" : "0"
         })
       );
     } catch (error) {
