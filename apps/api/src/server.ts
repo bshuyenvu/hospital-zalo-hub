@@ -71,6 +71,21 @@ app.setErrorHandler((error, request, reply) => {
   });
 });
 
+app.get("/", async (_request, reply) => {
+  reply
+    .type("text/html; charset=utf-8")
+    .header("Cache-Control", "no-store")
+    .send(`<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="zalo-platform-site-verification" content="USQxBAZj7mXmyim_yzf87JJ_c4BOYKCSCJCq" />
+    <title>Hospital Hub API</title>
+  </head>
+  <body>Hospital Hub API</body>
+</html>`);
+});
+
 app.get("/health", async () => ({
   ok: true,
   service: "hospital-zalo-hub-api",
