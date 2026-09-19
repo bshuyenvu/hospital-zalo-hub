@@ -108,51 +108,108 @@ export async function registerUserRoutes(app: FastifyInstance) {
     async (request) => {
       const query = z
         .object({
-          search: z.string().trim().optional(),
-          departmentId: z.string().optional()
+          search: z.string().trim().max(120).optional(),
+          departmentId: z.string().optional(),
+          page: z.coerce.number().int().min(1).default(1),
+          limit: z.coerce.number().int().min(1).max(50).default(30)
         })
         .parse(request.query);
 
-      const items = await prisma.user.findMany({
-        where: {
-          isActive: true,
-          ...(query.departmentId
-            ? { departmentId: query.departmentId }
-            : {}),
-          ...(query.search
-            ? {
-                OR: [
-                  {
-                    fullName: {
-                      contains: query.search,
-                      mode: "insensitive"
-                    }
-                  },
-                  {
-                    employeeCode: {
-                      contains: query.search,
-                      mode: "insensitive"
-                    }
+      const where = {
+        isActive: true,
+        ...(query.departmentId
+          ? { departmentId: query.departmentId }
+          : {}),
+        ...(query.search
+          ? {
+              OR: [
+                {
+                  fullName: {
+                    contains: query.search,
+                    mode: "insensitive" as const
                   }
-                ]
-              }
-            : {})
-        },
+                },
+                {
+                  employeeCode: {
+                    contains: query.search,
+                    mode: "insensitive" as const
+                  }
+                }
+              ]
+            }
+          : {})
+      };
+
+      const [items, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          select: {
+            id: true,
+            employeeCode: true,
+            fullName: true,
+            phone: true,
+            role: true,
+            department: {
+              select: { id: true, code: true, name: true }
+            }
+          },
+          orderBy: [{ department: { name: "asc" } }, { fullName: "asc" }],
+          skip: (query.page - 1) * query.limit,
+          take: query.limit
+        }),
+        prisma.user.count({ where })
+      ]);
+
+      return {
+        items,
+        meta: {
+          page: query.page,
+          limit: query.limit,
+          total,
+          pages: Math.max(1, Math.ceil(total / query.limit))
+        }
+      };
+    }
+  );
+
+  app.get(
+    "/v1/directory/:id",
+    { preHandler: [authenticate] },
+    async (request, reply) => {
+      const params = z.object({ id: z.string().min(1) }).parse(request.params);
+
+      const user = await prisma.user.findFirst({
+        where: { id: params.id, isActive: true },
         select: {
           id: true,
           employeeCode: true,
           fullName: true,
+          email: true,
           phone: true,
           role: true,
           department: {
             select: { id: true, code: true, name: true }
           }
-        },
-        orderBy: { fullName: "asc" },
-        take: 100
+        }
       });
 
-      return { items };
+      if (!user) {
+        return reply.code(404).send({
+          error: "directory_user_not_found",
+          message: "Không tìm thấy nhân sự trong danh bạ."
+        });
+      }
+
+      await writeAudit(request, {
+        action: "DIRECTORY_PROFILE_VIEW",
+        entityType: "User",
+        entityId: user.id,
+        metadata: {
+          employeeCode: user.employeeCode
+        }
+      });
+
+      return user;
     }
   );
 
