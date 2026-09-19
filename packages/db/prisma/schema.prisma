@@ -22,13 +22,20 @@ enum ZaloOAuthMode {
   LINK
 }
 
+enum AnnouncementPriority {
+  NORMAL
+  IMPORTANT
+  URGENT
+}
+
 model Department {
   id        String   @id @default(cuid())
   code      String   @unique
   name      String
   isActive  Boolean  @default(true)
-  users     User[]
-  createdAt DateTime @default(now())
+  users         User[]
+  announcements Announcement[] @relation("AnnouncementTargetDepartment")
+  createdAt     DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
@@ -52,6 +59,8 @@ model User {
   auditLogs       AuditLog[]      @relation("AuditActor")
   zaloFlows       ZaloOAuthFlow[]
   authTickets     AuthTicket[]
+  announcementsAuthored Announcement[]     @relation("AnnouncementAuthor")
+  announcementReads     AnnouncementRead[]
 
   @@index([departmentId])
   @@index([fullName])
@@ -98,4 +107,35 @@ model AuditLog {
 
   @@index([actorId, createdAt])
   @@index([entityType, entityId])
+}
+
+model Announcement {
+  id                 String               @id @default(cuid())
+  title              String
+  body               String
+  priority           AnnouncementPriority @default(NORMAL)
+  authorId           String
+  author             User                 @relation("AnnouncementAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  targetDepartmentId String?
+  targetDepartment   Department?          @relation("AnnouncementTargetDepartment", fields: [targetDepartmentId], references: [id], onDelete: SetNull)
+  publishedAt        DateTime             @default(now())
+  expiresAt          DateTime?
+  isActive           Boolean              @default(true)
+  reads              AnnouncementRead[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([isActive, publishedAt])
+  @@index([targetDepartmentId, publishedAt])
+}
+
+model AnnouncementRead {
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now())
+
+  @@id([announcementId, userId])
+  @@index([userId, readAt])
 }
