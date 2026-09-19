@@ -4,6 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Hospital Hub",
   description: "Cổng nội bộ bệnh viện tích hợp Zalo",
+  other: {
+    "zalo-platform-site-verification":
+      "USQxBAZj7mXmyim_yzf87JJ_c4BOYKCSCJCq",
+  },
 };
 
 export default function RootLayout({
