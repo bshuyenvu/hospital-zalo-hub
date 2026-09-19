@@ -47,6 +47,15 @@ export function hashTicket(ticket: string) {
   return createHash("sha256").update(ticket).digest("hex");
 }
 
+export function isZaloOAuthConfigured() {
+  return Boolean(
+    process.env.ZALO_APP_ID?.trim() &&
+      process.env.ZALO_APP_SECRET?.trim() &&
+      process.env.ZALO_REDIRECT_URI?.trim() &&
+      process.env.ZALO_AUTH_SUCCESS_REDIRECT?.trim()
+  );
+}
+
 function requireZaloConfig() {
   const appId = process.env.ZALO_APP_ID;
   const appSecret = process.env.ZALO_APP_SECRET;
