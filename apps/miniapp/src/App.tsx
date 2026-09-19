@@ -150,8 +150,8 @@ export default function App() {
 
       <nav className="nav" aria-label="Điều hướng chính">
         <button type="button">🏠<span>Trang chủ</span></button>
-        <button type="button" disabled={!user}>🔔<span>Thông báo</span></button>
-        <button type="button" disabled={!user}>👤<span>Cá nhân</span></button>
+        <button type="button" disabled={!isAuthenticated}>🔔<span>Thông báo</span></button>
+        <button type="button" disabled={!isAuthenticated}>👤<span>Cá nhân</span></button>
       </nav>
     </main>
   );
